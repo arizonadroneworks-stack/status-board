@@ -1,0 +1,19 @@
+#board{width:1920px;height:1080px;position:absolute;left:0;top:0;transform-origin:0 0;overflow:hidden;background:#07090D;color:#E8EEF4;font-family:'Rajdhani','Arial Narrow',sans-serif}
+#board *{box-sizing:border-box}
+#board .abs{position:absolute}
+#board .mono{font-family:'JetBrains Mono',monospace}
+@keyframes fl-shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}
+@keyframes fl-sweep{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes fl-blink{0%,60%{opacity:1}61%,100%{opacity:.2}}
+@keyframes fl-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+.fl-shimmer{animation:fl-shimmer 2.8s linear infinite}
+.fl-sweep{animation:fl-sweep 3s linear infinite;transform-origin:50% 50%}
+.fl-blink{animation:fl-blink 1.4s steps(1) infinite}
+.fl-pulse{animation:fl-pulse 2.4s ease-in-out infinite}
+.blur4{backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.blur6{backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.lbl{font-weight:700;color:#9AA6B4}
+.plate{width:100%;padding:5px 10px;background:rgba(7,9,13,.82);text-align:center}
+.plate .nm{font-size:26px;font-weight:700;letter-spacing:1px;text-transform:uppercase;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.corner{position:absolute;width:22px;height:22px;border:0 solid #5EC8FF}
