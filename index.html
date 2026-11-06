@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Status Display</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+html,body{margin:0;height:100%;background:#07090D;color:#E8EEF4;font-family:'Rajdhani','Arial Narrow',sans-serif;overflow:hidden}
+#gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#gate form{width:min(420px,90vw);padding:32px;background:#10151C;border:1px solid rgba(94,200,255,.35);display:flex;flex-direction:column;gap:14px}
+#gate h1{margin:0;font-size:26px;letter-spacing:4px}
+#gate label{font-size:15px;letter-spacing:3px;color:#9AA6B4}
+#gate input[type=password]{font-size:22px;padding:12px;background:#07090D;color:#E8EEF4;border:1px solid #2E3743}
+#gate .row{display:flex;align-items:center;gap:10px}
+#gate .row input{width:22px;height:22px}
+#gate button{font-size:22px;font-weight:700;letter-spacing:4px;padding:12px;background:#5EC8FF;color:#07090D;border:0;cursor:pointer}
+#gate .err{color:#FF5A5A;min-height:22px;font-size:17px}
+#stage{position:fixed;inset:0;display:none}
+</style>
+</head>
+<body>
+<div id="gate">
+  <form id="f" autocomplete="off">
+    <h1>STATUS DISPLAY</h1>
+    <label for="pw">PASSWORD</label>
+    <input id="pw" type="password" autofocus>
+    <div class="row"><input id="rem" type="checkbox" checked><label for="rem" style="letter-spacing:1px;color:#E8EEF4;font-size:18px">Remember on this screen</label></div>
+    <button type="submit">OPEN</button>
+    <div class="err" id="err"></div>
+  </form>
+</div>
+<div id="stage"><div id="board"></div></div>
+<script>
+(function () {
+  var KEY = 'sd_pw', keys = {}, lastStamp = null, pw = null, appLoaded = false;
+  function b64(s) { var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+  async function key(salt) {
+    if (keys[salt]) return keys[salt];
+    var base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+    keys[salt] = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: b64(salt), iterations: 300000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+    return keys[salt];
+  }
+  async function getData() {
+    var r = await fetch('data.enc.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error('nodata');
+    var e = await r.json();
+    var pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(e.iv) }, await key(e.salt), b64(e.ct));
+    return JSON.parse(new TextDecoder().decode(pt));
+  }
+  async function loadApp() {
+    if (appLoaded) return;
+    var css = await (await fetch('app.css', { cache: 'no-store' })).text();
+    var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
+    var js = await (await fetch('app.js', { cache: 'no-store' })).text();
+    (new Function(js))();
+    appLoaded = true;
+  }
+  function fit() {
+    var b = document.getElementById('board'); var s = Math.min(innerWidth / 1920, innerHeight / 1080);
+    b.style.transform = 'translate(' + ((innerWidth - 1920 * s) / 2) + 'px,' + ((innerHeight - 1080 * s) / 2) + 'px) scale(' + s + ')';
+  }
+  async function refresh() {
+    try {
+      var d = await getData(), stamp = JSON.stringify(d);
+      if (stamp !== lastStamp) { lastStamp = stamp; window.renderBoard(document.getElementById('board'), d, 'scene.jpg'); }
+    } catch (e) { /* keep last good board */ }
+  }
+  async function start(p, remember) {
+    pw = p; keys = {};
+    var d = await getData();               // throws on wrong password
+    await loadApp();
+    if (remember) { try { localStorage.setItem(KEY, p); } catch (e) {} }
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('stage').style.display = 'block';
+    fit(); addEventListener('resize', fit);
+    lastStamp = JSON.stringify(d); window.renderBoard(document.getElementById('board'), d, 'scene.jpg');
+    setInterval(refresh, 5 * 60 * 1000);
+    setTimeout(function () { location.reload(); }, 12 * 60 * 60 * 1000);
+  }
+  document.getElementById('f').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var err = document.getElementById('err'); err.textContent = 'Unlocking…';
+    start(document.getElementById('pw').value, document.getElementById('rem').checked).catch(function (e) {
+      err.textContent = (e && e.message === 'nodata') ? 'No data published yet.' : 'Wrong password.';
+    });
+  });
+  var saved = null; try { saved = localStorage.getItem(KEY); } catch (e) {}
+  if (saved) start(saved, true).catch(function () {});
+})();
+</script>
+</body>
+</html>
